@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title></title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script language="javascript" type="text/javascript">
+		var wsUri = "ws://localhost:42043/";
+		var closed;
+		var websocket = null;
+		var endTimer = 0;
+
+		function init()
+		{
+		    if (websocket != null && websocket.readyState == websocket.OPEN)
+		    {
+				websocket.close();
+				closed = true;
+		    }
+		    // Initialisation
+		    websocket = new WebSocket(wsUri);
+		    websocket.onopen = function(evt) { onOpen(evt) };
+		    websocket.onclose = function(evt) { onClose(evt) };
+		    websocket.onmessage = function(evt) { onMessage(evt) };
+		    websocket.onerror = function(evt) { onError(evt) };
+		    closed = false;
+		}
+
+		function onOpen(evt)
+		{
+		    console.log("CONNECTED");
+		    writeToConsole("<font color='green'>Console> Connecte a H.A.GRID.</font>");
+			$("#connected").show();
+		}
+
+		function onClose(evt)
+		{
+		    console.log("DISCONNECTED");
+			setTimeout(init, 5000);
+		    writeToConsole("<font color='red'>Console> Déconnecté. Reconnexion dans 5 secondes...</font>");
+		}
+
+		function onMessage(evt)
+		{
+			var msg = evt.data;
+			var command = msg.substring(0, msg.indexOf(" "));
+			var message = msg.substring(msg.indexOf(" ") + 1);
+			if (command == "MSG") writeToConsole(message);
+			else if (command == "ALERT") alert(message);
+			else if (command == "TEAM") {
+				$("#teamChoice").hide();
+				$("#sender").show();
+				if (message == "hacker") $("#hagrid").css('color', 'DarkGreen');
+				else if (message == "andromeda") $("#hagrid").css('color', 'BlueViolet');
+			} else if (command == "PERCENT") changePercent(message);
+			else if (command == "END") endTimer = message * 1000;
+		}
+		
+		function changePercent(percent) {
+			var elem = document.getElementById("bar");
+			elem.style.width = percent + '%';
+            document.getElementById("label").innerHTML = percent * 1 + '%';
+		}
+
+		function onError(evt)
+		{
+		    console.log('ERROR: ' + evt.data);
+			alert("Error: " + evt.data);
+		}
+
+		function send(toSend) {
+			websocket.send(toSend);
+		}
+
+		function writeToConsole(txt) {
+			$("#console").html(txt + "<br />" + $("#console").html());
+		}
+		
+		var id = setInterval(frame, 1000);
+		function frame() {
+			var current = +new Date();
+			var val = endTimer - current;
+			if (val <= 0) {
+				clearInterval(id);
+				val = 0;
+			}
+			val /= 1000;
+			// calculate (and subtract) whole days
+			var days = Math.floor(val / 86400);
+			val -= days * 86400;
+
+			// calculate (and subtract) whole hours
+			var hours = Math.floor(val / 3600) % 24;
+			val -= hours * 3600;
+
+			// calculate (and subtract) whole minutes
+			var minutes = Math.floor(val / 60) % 60;
+			val -= minutes * 60;
+
+			// what's left is seconds
+			var seconds = val % 60;
+			val = Math.floor(days) + ":" + Math.floor(hours) + ":" + Math.floor(minutes) + ":" + Math.floor(seconds);
+			$("#timeout").html(val);
+		}
+	</script>
+	<style>
+	#progress {
+		position: relative;
+		margin-left: -8px;
+		width: 100%;
+		height: 30px;
+		background-color: grey;
+	}
+	#bar {
+		position: absolute;
+		width: 1%;
+		height: 100%;
+		background-color: green;
+	}
+	#label {
+		text-align: center; /* If you want to center it */
+		line-height: 30px; /* Set the line-height to the same as the height of the progress bar container, to center it vertically */
+		color: white;
+	}
+	</style>
+</head>
+<body style="background-color: black;color: white;width: 100%;text-align: center;">
+	<h1 id="hagrid" style="color: gray;padding: 0px;margin: 0px;">H.A.GRID</h1>
+	<i>Hacker Annihilation Grid</i>
+	<div id="connected" style="display: none;">
+		Hack timeout: <span id="timeout">UNKNOWN</span><br />
+		Security level:<br />
+		<div id="progress"><div id="bar"><div id="label">1%</div></div></div>
+		<div id="teamChoice">
+			<form id="hacker"><input type="submit" value="Team hacker" /></form>
+			<form id="andromeda"><input type="submit" value="Team andromeda" /></form>
+			(attention votre choix est définitif)
+		</div>
+		<form id="sender" style="display: none;"><input type='text' name='tosend' id="tosend" /><input type='submit' /></form>
+	</div>
+	<div id="console">Connexion a H.A.GRID...</div>
+	<script>
+	$("#hacker").submit(function(event) {
+	  event.preventDefault();
+	  send("hacker");
+	});
+	$("#andromeda").submit(function(event) {
+	  event.preventDefault();
+	  send("andromeda");
+	});
+	$("#sender").submit(function(event) {
+	  event.preventDefault();
+	  send($("#tosend").val());
+	});
+	init();
+	</script>
+</body>
+</html>
+
